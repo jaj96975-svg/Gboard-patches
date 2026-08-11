@@ -25,5 +25,6 @@ pluginManagement {
     }
 }
 
-include(":patches")
-include(":extensions:extension")
+plugins {
+    id("app.morphe.patches") version "1.5.1"
+}
