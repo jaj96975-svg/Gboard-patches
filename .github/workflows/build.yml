@@ -1,0 +1,41 @@
+name: Build Gboard Patches
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build MPP
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build patches
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN }}
+        run: ./gradlew :patches:buildAndroid generatePatchesList --stacktrace
+
+      - name: Find MPP
+        run: find . -type f -name "*.mpp" -print
+
+      - name: Upload MPP
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-patches-mpp
+          path: "**/*.mpp"
