@@ -3,18 +3,20 @@ name: Build Gboard Patches
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   build:
     name: Build MPP
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      packages: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -22,19 +24,27 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Make Gradle executable
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Build
+      - name: Build patches
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid generatePatchesList --stacktrace
+        run: |
+          ./gradlew :patches:buildAndroid generatePatchesList --stacktrace
 
-      - name: Find MPP
-        run: find . -type f -name "*.mpp" -print
+      - name: Find generated MPP
+        run: |
+          echo "Generated MPP files:"
+          find . -type f -name "*.mpp" -print
 
       - name: Upload MPP
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-patches-mpp
+          path: "**/*.mpp"
+          if-no-files-found: error      - name: Upload MPP
         uses: actions/upload-artifact@v4
         with:
           name: gboard-patches-mpp
