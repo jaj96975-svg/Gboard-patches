@@ -31,10 +31,19 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ./gradlew :patches:buildAndroid generatePatchesList --stacktrace
+        run: ./gradlew :patches:buildAndroid generatePatchesList --stacktrace
 
       - name: Find generated MPP
+        run: |
+          echo "Searching for MPP..."
+          find . -type f -name "*.mpp" -print
+
+      - name: Upload MPP
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-patches-mpp
+          path: "**/*.mpp"
+          if-no-files-found: error      - name: Find generated MPP
         run: |
           echo "Generated MPP files:"
           find . -type f -name "*.mpp" -print
