@@ -1,94 +1,35 @@
-import javax.inject.Inject
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.Classpath
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.testing.Test
-import org.gradle.process.ExecOperations
+rootProject.name = "gboard-patches"
 
-@CacheableTask
-abstract class GenerateTargetBindingsTask @Inject constructor(
-    private val execOperations: ExecOperations,
-) : DefaultTask() {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val profileFile: RegularFileProperty
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
 
-    @get:Classpath
-    abstract val compilerClasspath: ConfigurableFileCollection
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/MorpheApp/registry")
+            credentials {
+                username =
+                    providers.gradleProperty("gpr.user").orNull
+                        ?: System.getenv("GITHUB_ACTOR")
+                password =
+                    providers.gradleProperty("gpr.key").orNull
+                        ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
 
-    @get:OutputFile
-    abstract val outputFile: RegularFileProperty
-
-    @TaskAction
-    fun generate() {
-        execOperations.javaexec {
-            classpath(compilerClasspath)
-            mainClass.set("dev.jason.gboardpatches.tools.bindings.TargetBindingGenerator")
-            args(
-                profileFile.get().asFile.absolutePath,
-                outputFile.get().asFile.absolutePath,
-            )
+        maven {
+            url = uri("https://jitpack.io")
         }
     }
 }
 
-group = "dev.jason.gboardpatches"
-
-val generatedPatchInfoDir = layout.buildDirectory.dir("generated/sources/patchBuildInfo/kotlin/main")
-val generatedVersionBindingsDir = layout.buildDirectory.dir("generated/sources/versionBindings/kotlin/main")
-val generatedPreviewAssetsResourcesDir = layout.buildDirectory.dir("generated/resources/previewAssets/main")
-val bindingCompilerSourceSet = sourceSets.create("bindingCompiler") {
-    java.srcDir("src/bindingCompiler/kotlin")
-}
-val patchMetadataSourceSet = sourceSets.create("patchMetadata") {
-    java.srcDir("src/patchMetadata/kotlin")
-}
-patchMetadataSourceSet.compileClasspath += sourceSets.main.get().output
-patchMetadataSourceSet.runtimeClasspath += sourceSets.main.get().output
-val utf8Bom = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
-val previewAssetsSourceDir = layout.projectDirectory.dir("src/main/resources/settings-previews")
-val versionBindingsProfile = layout.projectDirectory.file(
-    "src/main/resources/gboard/gboard-version-bindings.json"
-)
-val syncExtensionTask = project(":extensions:extension").tasks.named("syncExtension")
-val runtimeAbiOutputDirectory = syncExtensionTask.map { task -> task.outputs.files.singleFile }
-val compiledPatchClasses = layout.buildDirectory.dir("classes/kotlin/main")
-
-configurations.named(patchMetadataSourceSet.implementationConfigurationName) {
-    extendsFrom(configurations["implementation"])
+plugins {
+    id("app.morphe.patches") version "1.5.1" apply false
 }
 
-sourceSets.test {
-    compileClasspath += bindingCompilerSourceSet.output
-    runtimeClasspath += bindingCompilerSourceSet.output
-}
-
-val generatePatchBuildInfo by tasks.registering {
-    val outputDir = generatedPatchInfoDir
-    val patchVersion = project.version.toString()
-
-    inputs.property("patchVersion", patchVersion)
-    outputs.dir(outputDir)
-
-    doLast {
-        val packageDir = outputDir.get().file("dev/jason/gboardpatches/patches/shared").asFile
-        packageDir.mkdirs()
-
-        packageDir.resolve("PatchBuildInfo.kt").writeText(
-            """
-            package dev.jason.gboardpatches.patches.shared
-
-            internal object PatchBuildInfo {
-                const val VERSION = "$patchVersion"
-            }
-            """.trimIndent()
+include(":patches")
+include(":extensions:extension")            """.trimIndent()
         )
     }
 }
